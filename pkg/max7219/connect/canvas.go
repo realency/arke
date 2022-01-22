@@ -1,9 +1,9 @@
 package connect
 
 import (
-	internal "realency/arke/internal/display"
+	internal "github.com/realency/arke/internal/display"
 
-	"realency/arke/pkg/display"
+	"github.com/realency/arke/pkg/display"
 )
 
 func NewCanvas(height, width int) display.Canvas {

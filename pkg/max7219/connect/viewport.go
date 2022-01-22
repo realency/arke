@@ -1,9 +1,9 @@
 package connect
 
 import (
-	. "realency/arke/internal/max7219"
-	"realency/arke/pkg/display"
-	"realency/arke/pkg/max7219"
+	. "github.com/realency/arke/internal/max7219"
+	"github.com/realency/arke/pkg/display"
+	"github.com/realency/arke/pkg/max7219"
 )
 
 const (

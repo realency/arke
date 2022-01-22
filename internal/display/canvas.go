@@ -1,6 +1,6 @@
 package display
 
-import . "realency/arke/pkg/display"
+import . "github.com/realency/arke/pkg/display"
 
 type canvas struct {
 	bits      [][]bool

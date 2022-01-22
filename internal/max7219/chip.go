@@ -1,6 +1,6 @@
 package max7219
 
-import . "realency/arke/pkg/max7219"
+import . "github.com/realency/arke/pkg/max7219"
 
 type chip struct {
 	bus        Bus

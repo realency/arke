@@ -1,4 +1,4 @@
-module realency/arke
+module github.com/realency/arke
 
 go 1.17
 

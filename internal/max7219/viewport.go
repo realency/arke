@@ -1,9 +1,9 @@
 package max7219
 
 import (
-	"realency/arke/pkg/display"
+	"github.com/realency/arke/pkg/display"
 
-	. "realency/arke/pkg/max7219"
+	. "github.com/realency/arke/pkg/max7219"
 )
 
 type viewPort struct {

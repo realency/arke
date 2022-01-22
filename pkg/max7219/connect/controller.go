@@ -1,8 +1,8 @@
 package connect
 
 import (
-	internal "realency/arke/internal/max7219"
-	"realency/arke/pkg/max7219"
+	internal "github.com/realency/arke/internal/max7219"
+	"github.com/realency/arke/pkg/max7219"
 
 	"periph.io/x/conn/v3/spi"
 )
