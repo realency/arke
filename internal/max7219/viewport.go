@@ -27,7 +27,7 @@ func NewViewPort(controller ChainController, blockOrientation, chainOrientation 
 	}
 }
 
-func (vp *viewPort) Attach(canvas display.Canvas, row, col int) {
+func (vp *viewPort) Attach(canvas *display.Canvas, row, col int) {
 	observer := func(bits [][]bool) {
 		buff := make([]byte, vp.controller.GetChainLength())
 
