@@ -1,9 +1,5 @@
 package max7219
 
-import (
-	. "github.com/realency/arke/pkg/max7219"
-)
-
 type chain struct {
 	bus      Bus
 	chainLen int

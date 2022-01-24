@@ -58,14 +58,14 @@ const (
 
 func DigitRegister(digit int) Register {
 	if digit < 0 || digit > 7 {
-		panic("digit register out of range.  The MAX7219 chip has 8 digit registers (in the range 0..7)")
+		panic("digit register out of range. The MAX7219 chip has 8 digit registers (in the range 0..7)")
 	}
 	return Register(digit + 1)
 }
 
 func Intensity(intensity int) byte {
 	if intensity < 0 || intensity > 15 {
-		panic("Intensity value out of range. Intensity may be in the range 0..15, inclusively.")
+		panic("Intensity value out of range. Intensity must be in the range 0..15, inclusively")
 	}
 
 	return byte(intensity)
