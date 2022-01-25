@@ -5,6 +5,11 @@ import (
 	"github.com/realency/arke/pkg/viewport"
 )
 
+type ViewPort interface {
+	viewport.ViewPort
+	Chain() ChainController
+}
+
 const (
 	DigitZeroAtTop    int = 0
 	DigitZeroAtRight  int = 1
@@ -19,7 +24,12 @@ const (
 	BlockZeroAtLeft   int = 3
 )
 
-func NewViewPort(controller ChainController, blockOrientation, chainOrientation int) viewport.ViewPort {
+type viewPort struct {
+	controller    ChainController
+	height, width int
+}
+
+func newViewPort(controller ChainController, blockOrientation, chainOrientation int) ViewPort {
 	if blockOrientation != DigitZeroAtBottom {
 		panic("Not yet supported")
 	}
@@ -28,15 +38,6 @@ func NewViewPort(controller ChainController, blockOrientation, chainOrientation 
 		panic("Not yet implemented")
 	}
 
-	return newViewPort(controller, blockOrientation, chainOrientation)
-}
-
-type viewPort struct {
-	controller    ChainController
-	height, width int
-}
-
-func newViewPort(controller ChainController, blockOrientation, chainOrientation int) viewport.ViewPort {
 	var height, width int
 	switch chainOrientation {
 	case 0, 2:
@@ -64,6 +65,10 @@ func (vp *viewPort) Attach(canvas *display.Canvas, row, col int) {
 	}
 
 	canvas.Observe(observer)
+}
+
+func (vp *viewPort) Chain() ChainController {
+	return vp.controller
 }
 
 func (vp *viewPort) rowToBytes(row []bool, offset int, buff []byte) {
