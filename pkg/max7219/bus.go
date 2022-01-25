@@ -1,10 +1,6 @@
 package max7219
 
-import (
-	"periph.io/x/conn/v3"
-	"periph.io/x/conn/v3/physic"
-	"periph.io/x/conn/v3/spi"
-)
+import "periph.io/x/conn/v3"
 
 // Bus provides structured access to a MAX7219 chip, or chain of cascaded chips attached on a serial port.
 type Bus interface {
@@ -25,17 +21,22 @@ func NoOp() Op {
 	return noOp
 }
 
-func NewBus(port spi.Port) (Bus, error) {
-	var c conn.Conn
-	var err error
-	if c, err = port.Connect(physic.MegaHertz*10, spi.Mode3, 8); err != nil {
-		return nil, err
-	}
-	return newBus(c), nil
-}
-
 type bus struct {
 	wire chan []byte
+}
+
+func newBus(cx conn.Conn) Bus {
+	wire := make(chan []byte)
+
+	go func() {
+		for {
+			cx.Tx(<-wire, nil)
+		}
+	}()
+
+	return &bus{
+		wire: wire,
+	}
 }
 
 func (b *bus) Write(ops ...Op) {
@@ -48,18 +49,4 @@ func (b *bus) Write(ops ...Op) {
 		i++
 	}
 	b.wire <- bytes
-}
-
-func newBus(conn conn.Conn) Bus {
-	wire := make(chan []byte)
-
-	go func() {
-		for {
-			conn.Tx(<-wire, nil)
-		}
-	}()
-
-	return &bus{
-		wire: wire,
-	}
 }

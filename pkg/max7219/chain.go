@@ -1,5 +1,14 @@
 package max7219
 
+type ChainController interface {
+	Controller
+	SetDigit(digit int, data ...byte) Flush
+	GetChainLength() int
+	SelectChip(index int) ChipController
+}
+
+const MaxChainLength = 256 // Arbitrary - but plenty!
+
 type chain struct {
 	bus      Bus
 	chainLen int
@@ -7,7 +16,7 @@ type chain struct {
 	buff     []Op
 }
 
-func NewChain(bus Bus, chainLen int) ChainController {
+func newChain(bus Bus, chainLen int) ChainController {
 	result := &chain{
 		bus:      bus,
 		buff:     make([]Op, chainLen),

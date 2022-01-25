@@ -2,6 +2,7 @@ package max7219
 
 import (
 	"github.com/realency/arke/pkg/display"
+	"github.com/realency/arke/pkg/viewport"
 )
 
 const (
@@ -18,7 +19,7 @@ const (
 	BlockZeroAtLeft   int = 3
 )
 
-func ViewPort(controller ChainController, blockOrientation, chainOrientation int) display.ViewPort {
+func NewViewPort(controller ChainController, blockOrientation, chainOrientation int) viewport.ViewPort {
 	if blockOrientation != DigitZeroAtBottom {
 		panic("Not yet supported")
 	}
@@ -27,7 +28,7 @@ func ViewPort(controller ChainController, blockOrientation, chainOrientation int
 		panic("Not yet implemented")
 	}
 
-	return NewViewPort(controller, blockOrientation, chainOrientation)
+	return newViewPort(controller, blockOrientation, chainOrientation)
 }
 
 type viewPort struct {
@@ -35,7 +36,7 @@ type viewPort struct {
 	height, width int
 }
 
-func NewViewPort(controller ChainController, blockOrientation, chainOrientation int) display.ViewPort {
+func newViewPort(controller ChainController, blockOrientation, chainOrientation int) viewport.ViewPort {
 	var height, width int
 	switch chainOrientation {
 	case 0, 2:

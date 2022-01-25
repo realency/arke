@@ -1,5 +1,10 @@
 package max7219
 
+type ChipController interface {
+	Controller
+	SetDigit(digit int, data byte) Flush
+}
+
 type chip struct {
 	bus        Bus
 	chainLen   int
