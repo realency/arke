@@ -54,17 +54,21 @@ func newViewPort(controller ChainController, blockOrientation, chainOrientation 
 }
 
 func (vp *viewPort) Attach(canvas *display.Canvas, row, col int) {
-	observer := func(bits [][]bool) {
-		buff := make([]byte, vp.controller.GetChainLength())
+	updates := make(chan [][]bool)
+	go func() {
+		for {
+			bits := <-updates
+			buff := make([]byte, vp.controller.GetChainLength())
 
-		for i := 0; i < vp.height; i++ {
-			vp.rowToBytes(bits[i], col, buff)
-			vp.controller.SetDigit(7-i, buff...)
+			for i := 0; i < vp.height; i++ {
+				vp.rowToBytes(bits[i], col, buff)
+				vp.controller.SetDigit(7-i, buff...)
+			}
+			vp.controller.Flush()
 		}
-		vp.controller.Flush()
-	}
+	}()
 
-	canvas.Observe(observer)
+	canvas.Observe(updates)
 }
 
 func (vp *viewPort) Chain() ChainController {

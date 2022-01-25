@@ -1,6 +1,6 @@
 package display
 
-type CanvasObserver func([][]bool)
+type CanvasObserver chan<- [][]bool
 
 type Canvas struct {
 	bits      [][]bool
@@ -85,6 +85,6 @@ func (c *Canvas) Clear() {
 
 func (c *Canvas) notify() {
 	for _, o := range c.observers {
-		o(c.bits)
+		o <- c.bits // TODO: Danger!  This is by-reference.  Bits could change by the time they're read.  Address this
 	}
 }
