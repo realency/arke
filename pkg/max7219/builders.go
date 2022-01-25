@@ -1,7 +1,6 @@
 package max7219
 
 import (
-	"github.com/realency/arke/pkg/viewport"
 	"periph.io/x/conn/v3"
 	"periph.io/x/conn/v3/physic"
 	"periph.io/x/conn/v3/spi"
@@ -20,7 +19,7 @@ type ChainBuilder interface {
 }
 
 type ViewPortBuilder interface {
-	Build() (viewport.ViewPort, error)
+	Build() (ViewPort, error)
 }
 
 type busBuilder struct {
@@ -129,7 +128,7 @@ func (c *chainBuilder) WithOrientation(blockOrientation, chainOrientation int) V
 	}
 }
 
-func (v *viewportBuilder) Build() (viewport.ViewPort, error) {
+func (v *viewportBuilder) Build() (ViewPort, error) {
 	c, err := v.chain.Build()
 	if err != nil {
 		return nil, err
