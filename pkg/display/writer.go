@@ -25,7 +25,7 @@ func (c *canvasWriter) Write(p []byte) (n int, err error) {
 	for _, r := range asStr {
 		bits := c.font(r)
 		width := len(bits[0])
-		if c.canvas.Width() > c.col+width {
+		if c.canvas.Width() < c.col+width {
 			break
 		}
 		c.canvas.Write(bits, c.row, c.col)
