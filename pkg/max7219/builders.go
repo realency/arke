@@ -8,74 +8,60 @@ import (
 	"periph.io/x/host/v3"
 )
 
-type BusBuilder interface {
-	Build() (Bus, error)
-	WithChainLength(length int) ChainBuilder
-}
-
-type ChainBuilder interface {
-	Build() (ChainController, error)
-	WithOrientation(blockOrientation, chainOrientation int) ViewPortBuilder
-}
-
-type ViewPortBuilder interface {
-	Build() (ViewPort, error)
-}
-
-type busBuilder struct {
+type BusBuilder struct {
 	dev  string
 	port spi.Port
 	cx   conn.Conn
 	bus  Bus
 }
 
-type chainBuilder struct {
-	bus    *busBuilder
+type ChainBuilder struct {
+	bus    *BusBuilder
 	length int
 	chain  ChainController
 }
 
-type viewportBuilder struct {
-	chain            *chainBuilder
+type ViewPortBuilder struct {
+	chain            *ChainBuilder
 	blockOrientation int
 	chainOrientation int
 }
 
-func FromScratch() BusBuilder {
+func FromScratch() *BusBuilder {
 	return FromDeviceName("")
 }
 
-func FromDeviceName(dev string) BusBuilder {
-	return &busBuilder{
+func FromDeviceName(dev string) *BusBuilder {
+	return &BusBuilder{
 		dev: dev,
 	}
 }
 
-func FromSpiPort(port spi.Port) BusBuilder {
-	return &busBuilder{
+func FromSpiPort(port spi.Port) *BusBuilder {
+	return &BusBuilder{
 		port: port,
 	}
 }
 
-func FromConnection(cx conn.Conn) BusBuilder {
-	return &busBuilder{
+func FromConnection(cx conn.Conn) *BusBuilder {
+	return &BusBuilder{
 		cx: cx,
 	}
 }
 
-func FromBus(bus Bus) BusBuilder {
-	return &busBuilder{
+func FromBus(bus Bus) *BusBuilder {
+	return &BusBuilder{
 		bus: bus,
 	}
 }
 
-func FromChain(chain ChainController) ChainBuilder {
-	return &chainBuilder{
+func FromChain(chain ChainController) *ChainBuilder {
+	return &ChainBuilder{
 		chain: chain,
 	}
 }
 
-func (b *busBuilder) Build() (Bus, error) {
+func (b *BusBuilder) Build() (Bus, error) {
 	var err error
 
 	if b.bus != nil {
@@ -100,14 +86,14 @@ func (b *busBuilder) Build() (Bus, error) {
 	return newBus(b.cx), nil
 }
 
-func (b *busBuilder) WithChainLength(length int) ChainBuilder {
-	return &chainBuilder{
+func (b *BusBuilder) WithChainLength(length int) *ChainBuilder {
+	return &ChainBuilder{
 		bus:    b,
 		length: length,
 	}
 }
 
-func (c *chainBuilder) Build() (ChainController, error) {
+func (c *ChainBuilder) Build() (ChainController, error) {
 	if c.chain != nil {
 		return c.chain, nil
 	}
@@ -120,15 +106,15 @@ func (c *chainBuilder) Build() (ChainController, error) {
 	return newChain(b, c.length), nil
 }
 
-func (c *chainBuilder) WithOrientation(blockOrientation, chainOrientation int) ViewPortBuilder {
-	return &viewportBuilder{
+func (c *ChainBuilder) WithOrientation(blockOrientation, chainOrientation int) *ViewPortBuilder {
+	return &ViewPortBuilder{
 		chain:            c,
 		blockOrientation: blockOrientation,
 		chainOrientation: chainOrientation,
 	}
 }
 
-func (v *viewportBuilder) Build() (ViewPort, error) {
+func (v *ViewPortBuilder) Build() (ViewPort, error) {
 	c, err := v.chain.Build()
 	if err != nil {
 		return nil, err

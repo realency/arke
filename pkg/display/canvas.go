@@ -85,6 +85,9 @@ func (c *Canvas) Clear() {
 
 func (c *Canvas) notify() {
 	for _, o := range c.observers {
-		o <- c.bits // TODO: Danger!  This is by-reference.  Bits could change by the time they're read.  Address this
+		select {
+		case o <- c.bits: // TODO: Danger!  This is by-reference.  Bits could change by the time they're read.  Address this
+		default:
+		}
 	}
 }
