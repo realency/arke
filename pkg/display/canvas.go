@@ -17,10 +17,6 @@ func NewCanvas(height, width int) *Canvas {
 	}
 }
 
-func (c *Canvas) Get(row, col int) bool {
-	return c.buff.Get(row, col)
-}
-
 func (c *Canvas) Height() int {
 	return c.buff.Height()
 }
@@ -29,11 +25,18 @@ func (c *Canvas) Width() int {
 	return c.buff.Width()
 }
 
-func (c *Canvas) Set(row, col int, value bool) {
-	c.buff.Set(row, col, value)
+func (c *Canvas) Get(row, col int) bool {
+	return c.buff.Get(row, col)
 }
 
-func (c *Canvas) Write(from [][]bool, row, col int) {
+func (c *Canvas) Set(row, col int, value bool) {
+	c.buff.Set(row, col, value)
+	if c.updateLevel == 0 {
+		c.notify()
+	}
+}
+
+func (c *Canvas) Write(from [][]bool, row, col int) { // TODO: This needs rewriting to take advantage of new approach
 	h := c.Height()
 	w := c.Width()
 	for i, r := range from {
@@ -74,9 +77,10 @@ func (c *Canvas) EndUpdate() {
 }
 
 func (c *Canvas) notify() {
+	cp := c.buff.GetImmutableCopy()
 	for _, o := range c.observers {
 		select {
-		case o <- c.buff.GetImmutableCopy():
+		case o <- cp:
 		default:
 		}
 	}

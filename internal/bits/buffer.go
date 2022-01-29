@@ -73,8 +73,27 @@ func (m *Buffer) Flip(row, col int) {
 	m.mutex.Unlock()
 }
 
-func (m *Buffer) ResetDirtyFlags() {
+// Clear sets all bits back to False and updates dirty flags accordingly.
+func (m *Buffer) Clear() {
 	m.mutex.Lock()
+	for i, b := range m.bits {
+		m.dirty[i] ^= b
+	}
+	m.bits = make([]byte, m.bytesPerRow*m.height)
+	m.mutex.Unlock()
+}
+
+// Reset unsets all dirty flags but leaves the bit data intact
+func (m *Buffer) Reset() {
+	m.mutex.Lock()
+	m.dirty = make([]byte, m.bytesPerRow*m.height)
+	m.mutex.Unlock()
+}
+
+// HarsReset resets the buffer back to original conditions with no bits set and no dirty flags set
+func (m *Buffer) HardReset() {
+	m.mutex.Lock()
+	m.bits = make([]byte, m.bytesPerRow*m.height)
 	m.dirty = make([]byte, m.bytesPerRow*m.height)
 	m.mutex.Unlock()
 }
