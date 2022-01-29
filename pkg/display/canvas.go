@@ -1,61 +1,56 @@
 package display
 
-type CanvasObserver chan<- [][]bool
+import "github.com/realency/arke/internal/bits"
+
+type CanvasObserver chan<- *bits.ImmutableBuffer
 
 type Canvas struct {
-	bits      [][]bool
-	observers []CanvasObserver
-	batching  bool
+	buff        *bits.Buffer
+	observers   []CanvasObserver
+	updateLevel uint
 }
 
 func NewCanvas(height, width int) *Canvas {
-	result := &Canvas{
-		bits:     make([][]bool, height),
-		batching: false,
+	return &Canvas{
+		buff:        bits.NewBuffer(height, width),
+		updateLevel: 0,
 	}
-
-	for i := range result.bits {
-		result.bits[i] = make([]bool, width)
-	}
-
-	return result
 }
 
 func (c *Canvas) Get(row, col int) bool {
-	return c.bits[row][col]
+	return c.buff.Get(row, col)
 }
 
 func (c *Canvas) Height() int {
-	return len(c.bits)
+	return c.buff.Height()
 }
 
 func (c *Canvas) Width() int {
-	return len(c.bits[0])
+	return c.buff.Width()
 }
 
 func (c *Canvas) Set(row, col int, value bool) {
-	c.bits[row][col] = value
-	if !c.batching {
-		c.notify()
-	}
+	c.buff.Set(row, col, value)
 }
 
 func (c *Canvas) Write(from [][]bool, row, col int) {
+	h := c.Height()
+	w := c.Width()
 	for i, r := range from {
-		if i+row >= len(c.bits) {
+		if i+row >= h {
 			break
 		}
 
 		for j, b := range r {
-			if j+col >= len(c.bits[0]) {
+			if j+col >= w {
 				break
 			}
 
-			c.bits[i+row][j+col] = b
+			c.buff.Set(i, j, b)
 		}
 	}
 
-	if !c.batching {
+	if c.updateLevel == 0 {
 		c.notify()
 	}
 }
@@ -65,20 +60,15 @@ func (c *Canvas) Observe(observer CanvasObserver) {
 }
 
 func (c *Canvas) StartUpdate() {
-	c.batching = true
+	c.updateLevel++
 }
 
 func (c *Canvas) EndUpdate() {
-	c.batching = false
-	c.notify()
-}
-
-func (c *Canvas) Clear() {
-	for i, r := range c.bits {
-		c.bits[i] = make([]bool, len(r))
+	if c.updateLevel == 0 {
+		panic("EndUpdate called out of sequence")
 	}
-
-	if !c.batching {
+	c.updateLevel--
+	if c.updateLevel == 0 {
 		c.notify()
 	}
 }
@@ -86,7 +76,7 @@ func (c *Canvas) Clear() {
 func (c *Canvas) notify() {
 	for _, o := range c.observers {
 		select {
-		case o <- c.bits: // TODO: Danger!  This is by-reference.  Bits could change by the time they're read.  Address this
+		case o <- c.buff.GetImmutableCopy():
 		default:
 		}
 	}

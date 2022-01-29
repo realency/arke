@@ -1,6 +1,7 @@
 package max7219
 
 import (
+	"github.com/realency/arke/internal/bits"
 	"github.com/realency/arke/pkg/display"
 	"github.com/realency/arke/pkg/viewport"
 )
@@ -54,14 +55,14 @@ func newViewPort(controller ChainController, blockOrientation, chainOrientation 
 }
 
 func (vp *viewPort) Attach(canvas *display.Canvas, row, col int) {
-	updates := make(chan [][]bool)
+	updates := make(chan *bits.ImmutableBuffer)
 	go func() {
 		for {
 			bits := <-updates
 			buff := make([]byte, vp.controller.GetChainLength())
 
 			for i := 0; i < vp.height; i++ {
-				vp.rowToBytes(bits[i], col, buff)
+				bits.RowReader(i, 0).Read(buff)
 				vp.controller.SetDigit(7-i, buff...)
 			}
 			vp.controller.Flush()
@@ -73,33 +74,4 @@ func (vp *viewPort) Attach(canvas *display.Canvas, row, col int) {
 
 func (vp *viewPort) Chain() ChainController {
 	return vp.controller
-}
-
-func (vp *viewPort) rowToBytes(row []bool, offset int, buff []byte) {
-	b := byte(0x00)
-	i := vp.controller.GetChainLength() - 1
-	m := byte(0x01)
-
-	for {
-		if row[offset] {
-			b |= m
-		}
-
-		m <<= 1
-
-		if m == 0 {
-			buff[i] = b
-			b = 0x00
-			m = 0x01
-			i--
-			if i < 0 {
-				break
-			}
-		}
-
-		offset++
-		if offset >= len(row) {
-			break
-		}
-	}
 }

@@ -42,6 +42,14 @@ func (m *Buffer) selector(row, col int) (int, byte) {
 	return (row * int(m.bytesPerRow)) + (col / 8), 0x80 >> (col % 8)
 }
 
+func (m *Buffer) Height() int {
+	return m.height
+}
+
+func (m *Buffer) Width() int {
+	return m.width
+}
+
 func (m *Buffer) Get(row, col int) bool {
 	idx, mask := m.selector(row, col)
 	return (m.bits[idx] & mask) != 0
@@ -91,8 +99,19 @@ func (m *Buffer) RowReader(row, col int) io.Reader {
 		panic("arg out of bounds")
 	}
 	a := make([]byte, m.bytesPerRow)
+	r0 := row * m.bytesPerRow
+	r1 := r0 + m.bytesPerRow
 	m.mutex.Lock()
-	copy(a, m.bits[row*m.bytesPerRow:])
+	copy(a, m.bits[r0:r1])
 	m.mutex.Unlock()
 	return NewArrayReader(a, col)
+}
+
+func (m *ImmutableBuffer) RowReader(row, col int) io.Reader {
+	if col > m.width || row < 0 || col < 0 || row > m.height {
+		panic("arg out of bounds")
+	}
+	r0 := row * m.bytesPerRow
+	r1 := r0 + m.bytesPerRow
+	return NewArrayReader(m.bits[r0:r1], col)
 }
