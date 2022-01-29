@@ -4,6 +4,7 @@ import (
 	"github.com/realency/arke/internal/bits"
 	"github.com/realency/arke/pkg/display"
 	"github.com/realency/arke/pkg/viewport"
+	"github.com/rs/zerolog/log"
 )
 
 type ViewPort interface {
@@ -62,7 +63,11 @@ func (vp *viewPort) Attach(canvas *display.Canvas, row, col int) {
 			buff := make([]byte, vp.controller.GetChainLength())
 
 			for i := 0; i < vp.height; i++ {
-				bits.RowReader(i, 0).Read(buff)
+				n, e := bits.RowReader(i, 0).Read(buff)
+				if e != nil {
+					panic("Error reading row")
+				}
+				log.Printf("Received %d bytes: %v", n, buff)
 				vp.controller.SetDigit(7-i, buff...)
 			}
 			vp.controller.Flush()
