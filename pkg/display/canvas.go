@@ -58,7 +58,7 @@ func (c *Canvas) Write(from [][]bool, row, col int) { // TODO: This needs rewrit
 				break
 			}
 
-			c.buff.Set(i, j, b)
+			c.buff.Set(i+row, j+col, b)
 		}
 	}
 
