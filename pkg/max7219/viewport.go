@@ -1,10 +1,11 @@
 package max7219
 
 import (
+	"log"
+
 	"github.com/realency/arke/internal/bits"
 	"github.com/realency/arke/pkg/display"
 	"github.com/realency/arke/pkg/viewport"
-	"github.com/rs/zerolog/log"
 )
 
 type ViewPort interface {
