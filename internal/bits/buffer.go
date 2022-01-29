@@ -39,7 +39,7 @@ func NewBuffer(height, width int) *Buffer {
 }
 
 func (m *Buffer) selector(row, col int) (int, byte) {
-	return (row * int(m.bytesPerRow)) + (col / 8), 0x80 >> (col % 8)
+	return (row * int(m.bytesPerRow)) + (col / 8), 0x01 << (col % 8)
 }
 
 func (m *Buffer) Height() int {
