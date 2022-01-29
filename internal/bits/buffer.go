@@ -65,12 +65,18 @@ func (m *Buffer) Set(row, col int, value bool) {
 	m.mutex.Unlock()
 }
 
-func (m *Buffer) Flip(row, col int) {
+// Sets a single bit value an flushes the buffer as a single atomic operation.  Be aware that the whole buffer is flushed, including other mutations not yet flushed
+func (m *Buffer) SetAndFlush(row, col int, value bool) *ImmutableBuffer {
 	idx, mask := m.selector(row, col)
+	result := m.newImmutable()
 	m.mutex.Lock()
-	m.bits[idx] ^= mask
-	m.dirty[idx] ^= mask
+	if (m.bits[idx]&mask != 0x00) != value {
+		m.bits[idx] ^= mask
+		m.dirty[idx] ^= mask
+	}
+	m.flushTo(result)
 	m.mutex.Unlock()
+	return result
 }
 
 // Clear sets all bits back to False and updates dirty flags accordingly.
@@ -83,34 +89,49 @@ func (m *Buffer) Clear() {
 	m.mutex.Unlock()
 }
 
-// Reset unsets all dirty flags but leaves the bit data intact
-func (m *Buffer) Reset() {
+func (m *Buffer) ClearAndFlush() *ImmutableBuffer {
+	result := m.newImmutable()
 	m.mutex.Lock()
-	m.dirty = make([]byte, m.bytesPerRow*m.height)
+	for i, b := range m.bits {
+		m.dirty[i] ^= b
+	}
+	m.bits = make([]byte, m.bytesPerRow*m.height)
+	m.flushTo(result)
 	m.mutex.Unlock()
+	return result
 }
 
-// HarsReset resets the buffer back to original conditions with no bits set and no dirty flags set
-func (m *Buffer) HardReset() {
+// Flush unsets all dirty flags and returns an immutable copy of the bits, but leaves the bit data intact
+func (m *Buffer) Flush() *ImmutableBuffer {
+	result := m.newImmutable()
+	m.mutex.Lock()
+	m.flushTo(result)
+	m.mutex.Unlock()
+	return result
+}
+
+// Reset hard-resets the buffer back to original conditions without flushing.  After the call, no bits are set and no dirty flags are set
+func (m *Buffer) Reset() {
 	m.mutex.Lock()
 	m.bits = make([]byte, m.bytesPerRow*m.height)
 	m.dirty = make([]byte, m.bytesPerRow*m.height)
 	m.mutex.Unlock()
 }
 
-func (m *Buffer) GetImmutableCopy() *ImmutableBuffer {
-	result := &ImmutableBuffer{
+func (m *Buffer) newImmutable() *ImmutableBuffer {
+	return &ImmutableBuffer{
 		height:      m.height,
 		width:       m.width,
 		bits:        make([]byte, m.bytesPerRow*m.height),
 		dirty:       make([]byte, m.bytesPerRow*m.height),
 		bytesPerRow: m.bytesPerRow,
 	}
-	m.mutex.Lock()
-	copy(result.bits, m.bits)
-	copy(result.dirty, m.dirty)
-	m.mutex.Unlock()
-	return result
+}
+
+func (m *Buffer) flushTo(b *ImmutableBuffer) {
+	copy(b.bits, m.bits)
+	copy(b.dirty, m.dirty)
+	m.dirty = make([]byte, m.bytesPerRow*m.height)
 }
 
 func (m *Buffer) RowReader(row, col int) io.Reader {

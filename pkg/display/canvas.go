@@ -30,9 +30,18 @@ func (c *Canvas) Get(row, col int) bool {
 }
 
 func (c *Canvas) Set(row, col int, value bool) {
-	c.buff.Set(row, col, value)
 	if c.updateLevel == 0 {
-		c.notify()
+		c.notify(c.buff.SetAndFlush(row, col, value))
+	} else {
+		c.buff.Set(row, col, value)
+	}
+}
+
+func (c *Canvas) Clear() {
+	if c.updateLevel == 0 {
+		c.notify(c.buff.ClearAndFlush())
+	} else {
+		c.buff.Clear()
 	}
 }
 
@@ -54,7 +63,7 @@ func (c *Canvas) Write(from [][]bool, row, col int) { // TODO: This needs rewrit
 	}
 
 	if c.updateLevel == 0 {
-		c.notify()
+		c.notify(c.buff.Flush())
 	}
 }
 
@@ -72,15 +81,14 @@ func (c *Canvas) EndUpdate() {
 	}
 	c.updateLevel--
 	if c.updateLevel == 0 {
-		c.notify()
+		c.notify(c.buff.Flush())
 	}
 }
 
-func (c *Canvas) notify() {
-	cp := c.buff.GetImmutableCopy()
+func (c *Canvas) notify(ib *bits.ImmutableBuffer) {
 	for _, o := range c.observers {
 		select {
-		case o <- cp:
+		case o <- ib:
 		default:
 		}
 	}
