@@ -64,7 +64,7 @@ func (vp *viewPort) Attach(canvas *display.Canvas, row, col int) {
 			for i := 0; i < vp.height; i++ {
 				bits.RowReader(i+row, col).Read(buff)
 				for j, b := range buff {
-					reversed[vp.controller.GetChainLength()-j] = b
+					reversed[vp.controller.GetChainLength()-(j+1)] = b
 				}
 				vp.controller.SetDigit(7-i, reversed...)
 			}
