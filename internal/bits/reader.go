@@ -1,18 +1,15 @@
 package bits
 
-import (
-	"io"
-)
+import "io"
 
-type ArrayReader struct {
+type sliceReader struct {
 	bytes  []byte
 	index  int
 	offset int
-	mask   byte
-	right  byte
+	ready  byte
 }
 
-func NewArrayReader(bytes []byte, bitOffset int) *ArrayReader {
+func newReader(bytes []byte, bitOffset int) *sliceReader {
 	if bitOffset < 0 || bitOffset > len(bytes)*8 {
 		panic("arg out of range")
 	}
@@ -20,18 +17,17 @@ func NewArrayReader(bytes []byte, bitOffset int) *ArrayReader {
 	offset := bitOffset % 8
 	index := bitOffset / 8
 
-	return &ArrayReader{
+	return &sliceReader{
 		bytes:  bytes,
 		index:  index,
 		offset: offset,
-		mask:   0xFF >> offset,
-		right:  bytes[index] << offset,
+		ready:  bytes[index] >> offset,
 	}
 }
 
-func (r *ArrayReader) Read(p []byte) (int, error) {
+func (r *sliceReader) Read(p []byte) (int, error) {
 	if r.index >= len(r.bytes) {
-		return 0x00, io.EOF
+		return 0, io.EOF
 	}
 
 	// optimise for the common case of a zero offset
@@ -41,20 +37,17 @@ func (r *ArrayReader) Read(p []byte) (int, error) {
 		return count, nil
 	}
 
-	var left byte = 0x00
 	i := 0
-
 	for r.index < len(r.bytes)-1 && i < len(p) {
 		r.index++
 		b := r.bytes[r.index]
-		left = b >> (8 - r.offset)
-		p[i] = r.right | left
-		r.right = b << r.offset
+		p[i] = r.ready | (b << (8 - r.offset))
+		r.ready = b >> r.offset
 		i++
 	}
 
 	if r.index == len(r.bytes)-1 && i < len(p) {
-		p[i] = r.right
+		p[i] = r.ready
 		r.index++
 		i++
 	}

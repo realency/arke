@@ -144,7 +144,7 @@ func (m *Buffer) RowReader(row, col int) io.Reader {
 	m.mutex.Lock()
 	copy(a, m.bits[r0:r1])
 	m.mutex.Unlock()
-	return NewArrayReader(a, col)
+	return newReader(a, col)
 }
 
 func (m *ImmutableBuffer) RowReader(row, col int) io.Reader {
@@ -153,5 +153,5 @@ func (m *ImmutableBuffer) RowReader(row, col int) io.Reader {
 	}
 	r0 := row * m.bytesPerRow
 	r1 := r0 + m.bytesPerRow
-	return NewArrayReader(m.bits[r0:r1], col)
+	return newReader(m.bits[r0:r1], col)
 }
