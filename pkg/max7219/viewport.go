@@ -61,7 +61,7 @@ func (vp *viewPort) Attach(canvas *display.Canvas, row, col int) {
 			update := <-updates
 			buff := make([]byte, vp.controller.GetChainLength())
 			for i := 0; i < vp.height; i++ {
-				r := update.Buff.Reader(row+i, col, bits.Right, 8*vp.controller.GetChainLength())
+				r := update.Buff.Reader(row+i, col+31, bits.Left, 8*vp.controller.GetChainLength())
 				for j := 0; j < len(buff); j++ {
 					b, e := r.ReadByte()
 					if e != nil {
