@@ -1,19 +1,38 @@
 package display
 
-import "github.com/realency/arke/internal/bits"
+import (
+	"sync"
 
-type CanvasObserver chan<- *bits.ImmutableBuffer
+	"github.com/realency/arke/pkg/bits"
+)
+
+type CanvasObserver chan<- CanvasUpdate
 
 type Canvas struct {
-	buff        *bits.Buffer
-	observers   []CanvasObserver
-	updateLevel uint
+	buff      *bits.Matrix
+	observers []CanvasObserver
+	mutex     *sync.RWMutex
+	update    CanvasUpdateKind
+}
+
+type CanvasUpdateKind byte
+
+const (
+	CanvasNoOp  CanvasUpdateKind = 0x00
+	CanvasClear CanvasUpdateKind = 0x01
+	CanvasWrite CanvasUpdateKind = 0x02
+	CanvasBatch CanvasUpdateKind = 0x04
+)
+
+type CanvasUpdate struct {
+	Buff *bits.Matrix
+	Kind CanvasUpdateKind
 }
 
 func NewCanvas(height, width int) *Canvas {
 	return &Canvas{
-		buff:        bits.NewBuffer(height, width),
-		updateLevel: 0,
+		buff:  bits.NewMatrix(height, width),
+		mutex: &sync.RWMutex{},
 	}
 }
 
@@ -26,69 +45,74 @@ func (c *Canvas) Width() int {
 }
 
 func (c *Canvas) Get(row, col int) bool {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
 	return c.buff.Get(row, col)
 }
 
 func (c *Canvas) Set(row, col int, value bool) {
-	if c.updateLevel == 0 {
-		c.notify(c.buff.SetAndFlush(row, col, value))
-	} else {
-		c.buff.Set(row, col, value)
-	}
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.buff.Set(row, col, value)
+	c.updated(CanvasWrite)
 }
 
 func (c *Canvas) Clear() {
-	if c.updateLevel == 0 {
-		c.notify(c.buff.ClearAndFlush())
-	} else {
-		c.buff.Clear()
-	}
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.buff.Clear()
+	c.updated(CanvasClear)
 }
 
-func (c *Canvas) Write(from [][]bool, row, col int) { // TODO: This needs rewriting to take advantage of new approach
-	h := c.Height()
-	w := c.Width()
-	for i, r := range from {
-		if i+row >= h {
-			break
-		}
+func (c *Canvas) Matrix() *bits.Matrix {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+	return c.buff.Clone()
+}
 
-		for j, b := range r {
-			if j+col >= w {
-				break
-			}
-
-			c.buff.Set(i+row, j+col, b)
-		}
-	}
-
-	if c.updateLevel == 0 {
-		c.notify(c.buff.Flush())
-	}
+func (c *Canvas) Write(from *bits.Matrix, row, col int) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	bits.Copy(from, 0, 0, c.buff, row, col, from.Height(), from.Width())
+	c.updated(CanvasWrite)
 }
 
 func (c *Canvas) Observe(observer CanvasObserver) {
 	c.observers = append(c.observers, observer)
 }
 
-func (c *Canvas) StartUpdate() {
-	c.updateLevel++
+func (c *Canvas) BeginUpdate() {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	if c.update != CanvasNoOp {
+		panic("BeginUpdate called out of sequence - update already underway")
+	}
+	c.update = CanvasBatch
 }
 
 func (c *Canvas) EndUpdate() {
-	if c.updateLevel == 0 {
-		panic("EndUpdate called out of sequence")
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	if c.update == CanvasNoOp {
+		panic("EndUpdate called out of sequence - no udate underway")
 	}
-	c.updateLevel--
-	if c.updateLevel == 0 {
-		c.notify(c.buff.Flush())
+	c.notify(c.update)
+	c.update = CanvasNoOp
+}
+
+func (c *Canvas) updated(kind CanvasUpdateKind) {
+	if (c.update & CanvasBatch) != 0 {
+		c.update |= kind
+	} else {
+		c.notify(kind)
 	}
 }
 
-func (c *Canvas) notify(ib *bits.ImmutableBuffer) {
+func (c *Canvas) notify(kind CanvasUpdateKind) {
+	clone := c.buff.Clone()
 	for _, o := range c.observers {
 		select {
-		case o <- ib:
+		case o <- CanvasUpdate{clone, kind}:
 		default:
 		}
 	}

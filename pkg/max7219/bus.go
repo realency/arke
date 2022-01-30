@@ -9,10 +9,8 @@ type Bus interface {
 
 // Op represents a single operation on a single MAX7219 chip, setting the state of one register
 type Op struct {
-	// The address of the register to set
-	Register Register
-	// The data to set
-	Data byte
+	Register Register // The address of the register to set
+	Data     byte     // The data to set
 }
 
 var noOp Op = Op{NoOpRegister, 0x00}

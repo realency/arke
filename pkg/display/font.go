@@ -1,3 +1,5 @@
 package display
 
-type Font func(r rune) [][]bool
+import "github.com/realency/arke/pkg/bits"
+
+type Font func(r rune) *bits.Matrix
