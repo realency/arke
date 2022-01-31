@@ -8,6 +8,7 @@ import (
 
 type ViewPort interface {
 	viewport.ViewPort
+	SetBrightness(bright byte)
 }
 
 const (
