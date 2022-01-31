@@ -1,6 +1,8 @@
 package max7219
 
 import (
+	"sync"
+
 	"github.com/realency/arke/pkg/bits"
 	"github.com/realency/arke/pkg/display"
 	"github.com/realency/arke/pkg/viewport"
@@ -29,6 +31,7 @@ type viewPort struct {
 	height, width int
 	bus           Bus
 	chainLength   int
+	mutex         *sync.Mutex
 }
 
 func newViewPort(bus Bus, chainLength int, blockOrientation, chainOrientation int) ViewPort {
@@ -53,14 +56,17 @@ func newViewPort(bus Bus, chainLength int, blockOrientation, chainOrientation in
 		chainLength: chainLength,
 		height:      height,
 		width:       width,
+		mutex:       &sync.Mutex{},
 	}
 }
 
 func (vp *viewPort) broadcast(reg Register, data byte) {
+	vp.mutex.Lock()
 	for i := 0; i < vp.chainLength; i++ {
 		vp.bus.Add(reg, data)
 	}
 	vp.bus.Send()
+	vp.mutex.Unlock()
 }
 
 func (vp *viewPort) Attach(canvas *display.Canvas, row, col int) {
@@ -80,6 +86,7 @@ func (vp *viewPort) Attach(canvas *display.Canvas, row, col int) {
 			for i := 0; i < vp.height; i++ {
 				reg := DigitRegister(i)
 				r := update.Buff.Reader(row+i, col, bits.Right, 8*vp.chainLength)
+				vp.mutex.Lock()
 				for j := 0; j < vp.chainLength; j++ {
 					data, e := r.ReadByte()
 					if e != nil {
@@ -88,6 +95,7 @@ func (vp *viewPort) Attach(canvas *display.Canvas, row, col int) {
 					vp.bus.Add(reg, data)
 				}
 				vp.bus.Send()
+				vp.mutex.Unlock()
 			}
 		}
 	}()
