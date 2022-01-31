@@ -4,22 +4,12 @@ import "periph.io/x/conn/v3"
 
 // Bus provides structured access to a MAX7219 chip, or chain of cascaded chips attached on a serial port.
 type Bus interface {
-	Write(ops ...Op)
-}
-
-// Op represents a single operation on a single MAX7219 chip, setting the state of one register
-type Op struct {
-	Register Register // The address of the register to set
-	Data     byte     // The data to set
-}
-
-var noOp Op = Op{NoOpRegister, 0x00}
-
-func NoOp() Op {
-	return noOp
+	Add(reg Register, data byte)
+	Send()
 }
 
 type bus struct {
+	buff []byte
 	wire chan []byte
 }
 
@@ -33,18 +23,16 @@ func newBus(cx conn.Conn) Bus {
 	}()
 
 	return &bus{
+		buff: make([]byte, 0, 1024),
 		wire: wire,
 	}
 }
 
-func (b *bus) Write(ops ...Op) {
-	bytes := make([]byte, len(ops)*2)
-	i := 0
-	for _, op := range ops {
-		bytes[i] = byte(op.Register)
-		i++
-		bytes[i] = op.Data
-		i++
-	}
-	b.wire <- bytes
+func (b *bus) Add(reg Register, data byte) {
+	b.buff = append(b.buff, byte(reg), data)
+}
+
+func (b *bus) Send() {
+	b.wire <- b.buff
+	b.buff = b.buff[0:0]
 }

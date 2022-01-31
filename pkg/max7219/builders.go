@@ -15,16 +15,11 @@ type BusBuilder struct {
 	bus  Bus
 }
 
-type ChainBuilder struct {
-	bus    *BusBuilder
-	length int
-	chain  ChainController
-}
-
 type ViewPortBuilder struct {
-	chain            *ChainBuilder
+	bus              *BusBuilder
 	blockOrientation int
 	chainOrientation int
+	chainLength      int
 }
 
 func FromScratch() *BusBuilder {
@@ -55,12 +50,6 @@ func FromBus(bus Bus) *BusBuilder {
 	}
 }
 
-func FromChain(chain ChainController) *ChainBuilder {
-	return &ChainBuilder{
-		chain: chain,
-	}
-}
-
 func (b *BusBuilder) Build() (Bus, error) {
 	var err error
 
@@ -86,39 +75,24 @@ func (b *BusBuilder) Build() (Bus, error) {
 	return newBus(b.cx), nil
 }
 
-func (b *BusBuilder) WithChainLength(length int) *ChainBuilder {
-	return &ChainBuilder{
-		bus:    b,
-		length: length,
-	}
-}
-
-func (c *ChainBuilder) Build() (ChainController, error) {
-	if c.chain != nil {
-		return c.chain, nil
-	}
-
-	b, err := c.bus.Build()
-	if err != nil {
-		return nil, err
-	}
-
-	return newChain(b, c.length), nil
-}
-
-func (c *ChainBuilder) WithOrientation(blockOrientation, chainOrientation int) *ViewPortBuilder {
+func (b *BusBuilder) WithChainLength(length int) *ViewPortBuilder {
 	return &ViewPortBuilder{
-		chain:            c,
-		blockOrientation: blockOrientation,
-		chainOrientation: chainOrientation,
+		bus:         b,
+		chainLength: length,
 	}
+}
+
+func (v *ViewPortBuilder) WithOrientation(blockOrientation, chainOrientation int) *ViewPortBuilder {
+	v.blockOrientation = blockOrientation
+	v.chainOrientation = chainOrientation
+	return v
 }
 
 func (v *ViewPortBuilder) Build() (ViewPort, error) {
-	c, err := v.chain.Build()
+	b, err := v.bus.Build()
 	if err != nil {
 		return nil, err
 	}
 
-	return newViewPort(c, v.blockOrientation, v.chainOrientation), nil
+	return newViewPort(b, v.chainLength, v.blockOrientation, v.chainOrientation), nil
 }
