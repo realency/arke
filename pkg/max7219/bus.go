@@ -34,5 +34,5 @@ func (b *bus) Add(reg Register, data byte) {
 
 func (b *bus) Send() {
 	b.wire <- b.buff
-	b.buff = b.buff[0:0]
+	b.buff = nil
 }
