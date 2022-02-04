@@ -83,12 +83,12 @@ func (r *reader) readLeft() byte {
 		r.ready >>= 1
 
 		r.offset--
-		if r.offset == -1 {
+		r.available--
+		if r.offset == -1 && r.available > 0 {
 			r.offset = 31
 			r.index--
 			r.ready = r.buff[r.index]
 		}
-		r.available--
 	}
 
 	return result
