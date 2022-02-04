@@ -84,8 +84,8 @@ func (vp *viewPort) Attach(canvas *display.Canvas, row, col int) {
 		for {
 			update := <-updates
 			for i := 0; i < vp.height; i++ {
-				reg := DigitRegister(i)
-				r := update.Buff.Reader(row+i, col, bits.Right, 8*vp.chainLength)
+				reg := DigitRegister(7 - i)
+				r := update.Buff.Reader(row+i, col+vp.width-1, bits.Left, 8*vp.chainLength)
 				vp.mutex.Lock()
 				for j := 0; j < vp.chainLength; j++ {
 					data, e := r.ReadByte()
