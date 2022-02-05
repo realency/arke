@@ -41,12 +41,12 @@ const (
 )
 
 type viewPort struct {
-	canvas        *display.Canvas
-	height, width int
-	bus           Bus
-	chainLength   int
-	updates       chan ViewPortUpdate
-	mutex         *sync.Mutex
+	canvas                  *display.Canvas
+	row, col, height, width int
+	bus                     Bus
+	chainLength             int
+	updates                 chan ViewPortUpdate
+	mutex                   *sync.Mutex
 }
 
 func newViewPort(bus Bus, chainLength int, blockOrientation, chainOrientation int) ViewPort {
@@ -87,6 +87,8 @@ func (vp *viewPort) broadcast(reg Register, data byte) {
 
 func (vp *viewPort) Attach(canvas *display.Canvas, row, col int) {
 	vp.canvas = canvas
+	vp.row = row
+	vp.col = col
 
 	vp.broadcast(ShutdownRegister, Shutdown)
 	vp.broadcast(DisplayTestRegister, NoDisplayTest)
@@ -105,14 +107,14 @@ func (vp *viewPort) Attach(canvas *display.Canvas, row, col int) {
 			case update := <-updates:
 				buff = update.Buff
 			case update := <-vp.updates:
-				row += update.rowDelta
-				col += update.colDelta
+				vp.row += update.rowDelta
+				vp.col += update.colDelta
 				buff = vp.canvas.Matrix().Clone()
 			}
 
 			for i := 0; i < vp.height; i++ {
 				reg := DigitRegister(7 - i)
-				r := buff.Reader(row+i, col+vp.width-1, bits.Left, 8*vp.chainLength)
+				r := buff.Reader(vp.row+i, vp.col+vp.width-1, bits.Left, 8*vp.chainLength)
 				vp.mutex.Lock()
 				for j := 0; j < vp.chainLength; j++ {
 					data, e := r.ReadByte()
@@ -140,4 +142,12 @@ func (vp *viewPort) Shift(rowDelta, colDelta int) {
 		colDelta: colDelta,
 		kind:     ViewPortShift,
 	}
+}
+
+func (vp *viewPort) Coords() (row, col int) {
+	return vp.row, vp.col
+}
+
+func (vp *viewPort) Size() (height, width int) {
+	return vp.height, vp.width
 }
