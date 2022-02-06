@@ -18,16 +18,18 @@ func NewWriter(canvas *Canvas, font Font, row, col int) *canvasWriter {
 
 func (c *canvasWriter) Write(p []byte) (n int, err error) {
 	asStr := string(p)
+	_, w := c.canvas.Size()
+
 	c.canvas.BeginUpdate()
 	defer c.canvas.EndUpdate()
 
 	i := 0
 	for _, r := range asStr {
-		if c.col >= c.canvas.Width() {
+		if c.col >= w {
 			break
 		}
 		m := c.font(r)
-		width := m.Width()
+		_, width := m.Size()
 		c.canvas.Write(m, c.row, c.col)
 		c.col += width
 		i++

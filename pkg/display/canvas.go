@@ -36,12 +36,8 @@ func NewCanvas(height, width int) *Canvas {
 	}
 }
 
-func (c *Canvas) Height() int {
-	return c.buff.Height()
-}
-
-func (c *Canvas) Width() int {
-	return c.buff.Width()
+func (c *Canvas) Size() (height, width int) {
+	return c.buff.Size()
 }
 
 func (c *Canvas) Get(row, col int) bool {
@@ -70,10 +66,11 @@ func (c *Canvas) Matrix() *bits.Matrix {
 	return c.buff.Clone()
 }
 
-func (c *Canvas) Write(from *bits.Matrix, row, col int) {
+func (c *Canvas) Write(source *bits.Matrix, row, col int) {
+	h, w := source.Size()
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	bits.Copy(from, 0, 0, c.buff, row, col, from.Height(), from.Width())
+	bits.Copy(source, 0, 0, c.buff, row, col, h, w)
 	c.updated(CanvasWrite)
 }
 

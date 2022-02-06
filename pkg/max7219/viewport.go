@@ -22,10 +22,10 @@ type ViewPortUpdate struct {
 }
 
 const (
-	DigitZeroAtTop    int = 0 // Digits are indexed from top to bottom, and the least significant bit in a digit register appears at the right
-	DigitZeroAtRight  int = 1 // Digits are indexed from right to left, and the least significant bit in a digit register appears at the top
-	DigitZeroAtBottom int = 2 // Digits are indexed from bottom to top, and the least significant bit in a digit register appears at the left
-	DigitZeroAtLeft   int = 3 // Digits are indexed from left to right, and the least significant bit in a digit register appears at the bottom
+	DigitZeroAtTop    int = 0 // Digits are indexed from top to bottom, and the least significant bit in a digit register controls an LED at the right
+	DigitZeroAtRight  int = 1 // Digits are indexed from right to left, and the least significant bit in a digit register controls an LED at the bottom
+	DigitZeroAtBottom int = 2 // Digits are indexed from bottom to top, and the least significant bit in a digit register controls an LED at the left
+	DigitZeroAtLeft   int = 3 // Digits are indexed from left to right, and the least significant bit in a digit register controls an LED at the top
 )
 
 const (
@@ -66,7 +66,7 @@ func newViewPort(bus Bus, chainLength int, blockOrientation, chainOrientation in
 		height, width = 8, chainLength*8
 	}
 
-	return &viewPort{
+	result := &viewPort{
 		bus:         bus,
 		chainLength: chainLength,
 		height:      height,
@@ -74,6 +74,20 @@ func newViewPort(bus Bus, chainLength int, blockOrientation, chainOrientation in
 		updates:     make(chan ViewPortUpdate),
 		mutex:       &sync.Mutex{},
 	}
+
+	result.init()
+	return result
+}
+
+func (vp *viewPort) init() {
+	vp.broadcast(ShutdownRegister, Shutdown)
+	vp.broadcast(DisplayTestRegister, NoDisplayTest)
+	vp.broadcast(ScanLimitRegister, 0x07)
+	vp.broadcast(DecodeModeRegister, DecodeNone)
+	for i := 0; i < 8; i++ {
+		vp.broadcast(DigitRegister(i), 0x00)
+	}
+	vp.broadcast(ShutdownRegister, NoShutdown)
 }
 
 func (vp *viewPort) broadcast(reg Register, data byte) {
@@ -90,46 +104,38 @@ func (vp *viewPort) Attach(canvas *display.Canvas, row, col int) {
 	vp.row = row
 	vp.col = col
 
-	vp.broadcast(ShutdownRegister, Shutdown)
-	vp.broadcast(DisplayTestRegister, NoDisplayTest)
-	vp.broadcast(ScanLimitRegister, 0x07)
-	vp.broadcast(DecodeModeRegister, DecodeNone)
-	for i := 0; i < 8; i++ {
-		vp.broadcast(DigitRegister(i), 0x00)
-	}
-	vp.broadcast(ShutdownRegister, NoShutdown)
-
 	updates := make(chan display.CanvasUpdate, 20)
 	go func() {
 		for {
-			var buff *bits.Matrix
 			select {
 			case update := <-updates:
-				buff = update.Buff
+				vp.handleUpdate(update.Buff)
 			case update := <-vp.updates:
 				vp.row += update.rowDelta
 				vp.col += update.colDelta
-				buff = vp.canvas.Matrix().Clone()
-			}
-
-			for i := 0; i < vp.height; i++ {
-				reg := DigitRegister(7 - i)
-				r := buff.Reader(vp.row+i, vp.col+vp.width-1, bits.Left, 8*vp.chainLength)
-				vp.mutex.Lock()
-				for j := 0; j < vp.chainLength; j++ {
-					data, e := r.ReadByte()
-					if e != nil {
-						panic(e)
-					}
-					vp.bus.Add(reg, data)
-				}
-				vp.bus.Send()
-				vp.mutex.Unlock()
+				vp.handleUpdate(vp.canvas.Matrix().Clone())
 			}
 		}
 	}()
 
 	canvas.Observe(updates)
+}
+
+func (vp *viewPort) handleUpdate(buff *bits.Matrix) {
+	for i := 0; i < vp.height; i++ {
+		reg := DigitRegister(7 - i)
+		r := buff.Reader(vp.row+i, vp.col+vp.width-1, bits.Left, 8*vp.chainLength)
+		vp.mutex.Lock()
+		for j := 0; j < vp.chainLength; j++ {
+			data, e := r.ReadByte()
+			if e != nil {
+				panic(e)
+			}
+			vp.bus.Add(reg, data)
+		}
+		vp.bus.Send()
+		vp.mutex.Unlock()
+	}
 }
 
 func (vp *viewPort) SetBrightness(bright byte) {
