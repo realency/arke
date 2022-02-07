@@ -1,5 +1,7 @@
 package bits
 
+import "fmt"
+
 type stream struct {
 	buff          []uint32
 	index, offset int
@@ -8,7 +10,7 @@ type stream struct {
 
 func newStream(m *Matrix, row, col, count int) *stream {
 	if row < 0 || row >= m.height || col < 0 || col >= m.width || col+count > m.width {
-		panic("Arguments out of bounds")
+		panic(fmt.Sprintf("Arguments out of bounds.  row=%d, col=%d, count=%d, m.height=%d, m.width=%d", row, col, count, m.height, m.width))
 	}
 
 	return &stream{
