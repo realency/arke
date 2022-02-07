@@ -2,6 +2,9 @@ package bits
 
 import "io"
 
+// This whole code file is ugly and driven by an attempt to optimise prematurely.  Needs reconsideration.
+// But right now there are more important issues to tackle
+
 type Direction byte
 
 const (

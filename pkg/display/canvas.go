@@ -74,8 +74,12 @@ func (c *Canvas) Write(source *bits.Matrix, row, col int) {
 	c.updated(CanvasWrite)
 }
 
-func (c *Canvas) Observe(observer CanvasObserver) {
+func (c *Canvas) AddObserver(observer CanvasObserver) int {
 	c.observers = append(c.observers, observer)
+}
+
+func (c *Canvas) RemoveObserver(id int) error {
+
 }
 
 func (c *Canvas) BeginUpdate() {

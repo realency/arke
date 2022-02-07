@@ -88,7 +88,7 @@ func (v *ViewPortBuilder) WithOrientation(blockOrientation, chainOrientation int
 	return v
 }
 
-func (v *ViewPortBuilder) Build() (ViewPort, error) {
+func (v *ViewPortBuilder) Build() (*ViewPort, error) {
 	b, err := v.bus.Build()
 	if err != nil {
 		return nil, err

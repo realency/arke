@@ -1,22 +1,14 @@
 package max7219
 
 import (
-	"sync"
-
 	"github.com/realency/arke/pkg/bits"
 	"github.com/realency/arke/pkg/display"
 	"github.com/realency/arke/pkg/viewport"
 )
 
-type ViewPort interface {
-	viewport.ViewPort
-	SetBrightness(bright byte)
-}
-
 type ViewPortUpdateKind byte
 
-type ViewPortUpdate struct {
-	kind     ViewPortUpdateKind
+type offset struct {
 	rowDelta int
 	colDelta int
 }
@@ -35,21 +27,16 @@ const (
 	BlockZeroAtLeft   int = 3 // In a chain of chips, the block controlled by the first address-byte pair sent in a packet is at the left
 )
 
-const (
-	ViewPortNoOp  ViewPortUpdateKind = 0x00
-	ViewPortShift ViewPortUpdateKind = 0x01
-)
-
-type viewPort struct {
+type ViewPort struct {
 	canvas                  *display.Canvas
 	row, col, height, width int
 	bus                     Bus
 	chainLength             int
-	updates                 chan ViewPortUpdate
-	mutex                   *sync.Mutex
+	brightness              chan byte
+	shifts                  chan offset
 }
 
-func newViewPort(bus Bus, chainLength int, blockOrientation, chainOrientation int) ViewPort {
+func newViewPort(bus Bus, chainLength int, blockOrientation, chainOrientation int) *ViewPort {
 	if blockOrientation != DigitZeroAtBottom {
 		panic("Not yet supported")
 	}
@@ -66,20 +53,18 @@ func newViewPort(bus Bus, chainLength int, blockOrientation, chainOrientation in
 		height, width = 8, chainLength*8
 	}
 
-	result := &viewPort{
+	result := &ViewPort{
 		bus:         bus,
 		chainLength: chainLength,
 		height:      height,
 		width:       width,
-		updates:     make(chan ViewPortUpdate),
-		mutex:       &sync.Mutex{},
 	}
 
 	result.init()
 	return result
 }
 
-func (vp *viewPort) init() {
+func (vp *ViewPort) init() {
 	vp.broadcast(ShutdownRegister, Shutdown)
 	vp.broadcast(DisplayTestRegister, NoDisplayTest)
 	vp.broadcast(ScanLimitRegister, 0x07)
@@ -88,44 +73,60 @@ func (vp *viewPort) init() {
 		vp.broadcast(DigitRegister(i), 0x00)
 	}
 	vp.broadcast(ShutdownRegister, NoShutdown)
+
+	canvasUpdates := make(chan display.CanvasUpdate, 20)
+
+	go func() {
+		for {
+			select {
+			case update := <-canvasUpdates:
+				vp.handleUpdate(update.Buff)
+			case b := <-vp.brightness:
+				vp.broadcast(IntensityRegister, b)
+			case shift := <-vp.shifts:
+				vp.row += shift.rowDelta
+				vp.col += shift.colDelta
+				vp.handleUpdate(vp.canvas.Matrix().Clone())
+			}
+		}
+
+	}()
 }
 
-func (vp *viewPort) broadcast(reg Register, data byte) {
-	vp.mutex.Lock()
+func (vp *ViewPort) broadcast(reg Register, data byte) {
 	for i := 0; i < vp.chainLength; i++ {
 		vp.bus.Add(reg, data)
 	}
 	vp.bus.Send()
-	vp.mutex.Unlock()
 }
 
-func (vp *viewPort) Attach(canvas *display.Canvas, row, col int) {
+func (vp *ViewPort) Attach(canvas *display.Canvas, row, col int) error {
+	if vp.canvas != nil {
+		return viewport.EAlreadyAttached
+	}
+
 	vp.canvas = canvas
 	vp.row = row
 	vp.col = col
 
-	updates := make(chan display.CanvasUpdate, 20)
-	go func() {
-		for {
-			select {
-			case update := <-updates:
-				vp.handleUpdate(update.Buff)
-			case update := <-vp.updates:
-				vp.row += update.rowDelta
-				vp.col += update.colDelta
-				vp.handleUpdate(vp.canvas.Matrix().Clone())
-			}
-		}
-	}()
-
-	canvas.Observe(updates)
+	vp.id = canvas.AddObserver(canvasUpdates)
+	return nil
 }
 
-func (vp *viewPort) handleUpdate(buff *bits.Matrix) {
+func (vp *ViewPort) Detach() error {
+	if vp.canvas == nil {
+		return viewport.ENotAttached
+	}
+
+	vp.canvas.RemoveObserver(vp.id)
+
+	return nil
+}
+
+func (vp *ViewPort) handleUpdate(buff *bits.Matrix) {
 	for i := 0; i < vp.height; i++ {
 		reg := DigitRegister(7 - i)
 		r := buff.Reader(vp.row+i, vp.col+vp.width-1, bits.Left, 8*vp.chainLength)
-		vp.mutex.Lock()
 		for j := 0; j < vp.chainLength; j++ {
 			data, e := r.ReadByte()
 			if e != nil {
@@ -134,15 +135,17 @@ func (vp *viewPort) handleUpdate(buff *bits.Matrix) {
 			vp.bus.Add(reg, data)
 		}
 		vp.bus.Send()
-		vp.mutex.Unlock()
 	}
 }
 
-func (vp *viewPort) SetBrightness(bright byte) {
-	vp.broadcast(IntensityRegister, bright)
+func (vp *ViewPort) SetBrightness(bright byte) {
+	vp.updates <- ViewPortUpdate{
+		kind:       ViewPortBrightness,
+		brightness: bright,
+	}
 }
 
-func (vp *viewPort) Shift(rowDelta, colDelta int) {
+func (vp *ViewPort) Shift(rowDelta, colDelta int) {
 	vp.updates <- ViewPortUpdate{
 		rowDelta: rowDelta,
 		colDelta: colDelta,
@@ -150,10 +153,10 @@ func (vp *viewPort) Shift(rowDelta, colDelta int) {
 	}
 }
 
-func (vp *viewPort) Coords() (row, col int) {
+func (vp *ViewPort) Offset() (row, col int) {
 	return vp.row, vp.col
 }
 
-func (vp *viewPort) Size() (height, width int) {
+func (vp *ViewPort) Size() (height, width int) {
 	return vp.height, vp.width
 }

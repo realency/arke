@@ -1,8 +1,6 @@
 package bits
 
 import (
-	"errors"
-	"io"
 	"strings"
 )
 
@@ -110,18 +108,9 @@ func Copy(source *Matrix, sourceRow, sourceCol int, dest *Matrix, destRow, destC
 
 	// The acual copy operation is performed using stream readers on the source and writers on the destination
 	for i := 0; i < height; i++ {
-		r := source.Reader(sourceRow+i, sourceCol, Right, width)
-		w := dest.Writer(destRow+i, destCol, width)
-		for {
-			b, e := r.ReadByte()
-			if errors.Is(e, io.EOF) {
-				break
-			}
-			w.WriteByte(b)
-			if errors.Is(e, io.EOF) {
-				break
-			}
-		}
+		r := newStream(source, sourceRow+i, sourceCol, width)
+		w := newStream(source, destRow+i, destCol, width)
+		streamCopy(r, w)
 	}
 
 	return height, width
