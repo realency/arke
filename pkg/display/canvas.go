@@ -33,8 +33,9 @@ type CanvasUpdate struct {
 
 func NewCanvas(height, width int) *Canvas {
 	return &Canvas{
-		buff:  bits.NewMatrix(height, width),
-		mutex: &sync.RWMutex{},
+		buff:      bits.NewMatrix(height, width),
+		observers: make(map[uint64]CanvasObserver),
+		mutex:     &sync.RWMutex{},
 	}
 }
 
