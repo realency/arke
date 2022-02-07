@@ -109,7 +109,7 @@ func Copy(source *Matrix, sourceRow, sourceCol int, dest *Matrix, destRow, destC
 	// The acual copy operation is performed using stream readers on the source and writers on the destination
 	for i := 0; i < height; i++ {
 		r := newStream(source, sourceRow+i, sourceCol, width)
-		w := newStream(source, destRow+i, destCol, width)
+		w := newStream(dest, destRow+i, destCol, width)
 		streamCopy(r, w)
 	}
 
