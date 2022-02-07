@@ -2,6 +2,7 @@ package display
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/realency/arke/pkg/bits"
 )
@@ -10,9 +11,10 @@ type CanvasObserver chan<- CanvasUpdate
 
 type Canvas struct {
 	buff      *bits.Matrix
-	observers []CanvasObserver
+	observers map[uint64]CanvasObserver
 	mutex     *sync.RWMutex
 	update    CanvasUpdateKind
+	nextId    uint64
 }
 
 type CanvasUpdateKind byte
@@ -74,12 +76,18 @@ func (c *Canvas) Write(source *bits.Matrix, row, col int) {
 	c.updated(CanvasWrite)
 }
 
-func (c *Canvas) AddObserver(observer CanvasObserver) int {
-	c.observers = append(c.observers, observer)
+func (c *Canvas) AddObserver(observer CanvasObserver) uint64 {
+	i := atomic.AddUint64(&c.nextId, 1)
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.observers[i] = observer
+	return i
 }
 
-func (c *Canvas) RemoveObserver(id int) error {
-
+func (c *Canvas) RemoveObserver(id uint64) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	delete(c.observers, id)
 }
 
 func (c *Canvas) BeginUpdate() {
@@ -95,7 +103,7 @@ func (c *Canvas) EndUpdate() {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	if c.update == CanvasNoOp {
-		panic("EndUpdate called out of sequence - no udate underway")
+		panic("EndUpdate called out of sequence - no update underway")
 	}
 	c.notify(c.update)
 	c.update = CanvasNoOp

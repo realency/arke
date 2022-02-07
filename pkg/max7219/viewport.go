@@ -1,17 +1,11 @@
 package max7219
 
 import (
+	"log"
+
 	"github.com/realency/arke/pkg/bits"
 	"github.com/realency/arke/pkg/display"
-	"github.com/realency/arke/pkg/viewport"
 )
-
-type ViewPortUpdateKind byte
-
-type offset struct {
-	rowDelta int
-	colDelta int
-}
 
 const (
 	DigitZeroAtTop    int = 0 // Digits are indexed from top to bottom, and the least significant bit in a digit register controls an LED at the right
@@ -27,13 +21,25 @@ const (
 	BlockZeroAtLeft   int = 3 // In a chain of chips, the block controlled by the first address-byte pair sent in a packet is at the left
 )
 
+type offset struct {
+	row, col int
+}
+
+type attachment struct {
+	offset offset
+	canvas *display.Canvas
+}
+
 type ViewPort struct {
 	canvas                  *display.Canvas
+	id                      uint64
 	row, col, height, width int
 	bus                     Bus
 	chainLength             int
+	offsets                 chan offset
 	brightness              chan byte
-	shifts                  chan offset
+	canvasUpdates           chan display.CanvasUpdate
+	attachments             chan attachment
 }
 
 func newViewPort(bus Bus, chainLength int, blockOrientation, chainOrientation int) *ViewPort {
@@ -54,13 +60,18 @@ func newViewPort(bus Bus, chainLength int, blockOrientation, chainOrientation in
 	}
 
 	result := &ViewPort{
-		bus:         bus,
-		chainLength: chainLength,
-		height:      height,
-		width:       width,
+		bus:           bus,
+		chainLength:   chainLength,
+		height:        height,
+		width:         width,
+		offsets:       make(chan offset),
+		brightness:    make(chan byte, 20),
+		canvasUpdates: make(chan display.CanvasUpdate, 20),
+		attachments:   make(chan attachment, 20),
 	}
 
 	result.init()
+	go result.run()
 	return result
 }
 
@@ -74,23 +85,66 @@ func (vp *ViewPort) init() {
 	}
 	vp.broadcast(ShutdownRegister, NoShutdown)
 
-	canvasUpdates := make(chan display.CanvasUpdate, 20)
+}
 
-	go func() {
-		for {
-			select {
-			case update := <-canvasUpdates:
-				vp.handleUpdate(update.Buff)
-			case b := <-vp.brightness:
-				vp.broadcast(IntensityRegister, b)
-			case shift := <-vp.shifts:
-				vp.row += shift.rowDelta
-				vp.col += shift.colDelta
+func (vp *ViewPort) run() {
+	for {
+		if len(vp.canvasUpdates) > 10 || len(vp.brightness) > 10 || len(vp.attachments) > 10 || len(vp.offsets) > 10 {
+			log.Println("WARNING ViewPort buffering operations")
+		}
+
+		if len(vp.canvasUpdates) == 20 || len(vp.brightness) == 20 || len(vp.attachments) == 20 || len(vp.offsets) == 20 {
+			panic("ViewPort buffer overflow")
+		}
+
+		select {
+		case c := <-vp.canvasUpdates:
+			vp.handleUpdate(c.Buff)
+		case b := <-vp.brightness:
+			vp.broadcast(IntensityRegister, b)
+		case o := <-vp.offsets:
+			if vp.canvas == nil {
+				continue
+			}
+			vp.setOffset(o)
+			vp.handleUpdate(vp.canvas.Matrix().Clone())
+		case a := <-vp.attachments:
+			if vp.canvas == a.canvas {
+				continue
+			}
+			if vp.canvas != nil {
+				vp.canvas.RemoveObserver(vp.id)
+				vp.id = 0
+				vp.row = -1
+				vp.col = -1
+				vp.canvas = nil
+			}
+			if a.canvas != nil {
+				vp.canvas = a.canvas
+				vp.id = a.canvas.AddObserver(vp.canvasUpdates)
+				vp.setOffset(a.offset)
 				vp.handleUpdate(vp.canvas.Matrix().Clone())
 			}
 		}
+	}
+}
 
-	}()
+func (vp *ViewPort) setOffset(o offset) {
+	h, w := vp.canvas.Size()
+	if o.row < 0 {
+		o.row = 0
+	}
+	if o.row+vp.height > h {
+		o.row = h - vp.height
+	}
+	if o.col < 0 {
+		o.col = 0
+	}
+	if o.col+vp.width > w {
+		o.col = w - vp.width
+	}
+	vp.row = o.row
+	vp.col = o.col
 }
 
 func (vp *ViewPort) broadcast(reg Register, data byte) {
@@ -98,29 +152,6 @@ func (vp *ViewPort) broadcast(reg Register, data byte) {
 		vp.bus.Add(reg, data)
 	}
 	vp.bus.Send()
-}
-
-func (vp *ViewPort) Attach(canvas *display.Canvas, row, col int) error {
-	if vp.canvas != nil {
-		return viewport.EAlreadyAttached
-	}
-
-	vp.canvas = canvas
-	vp.row = row
-	vp.col = col
-
-	vp.id = canvas.AddObserver(canvasUpdates)
-	return nil
-}
-
-func (vp *ViewPort) Detach() error {
-	if vp.canvas == nil {
-		return viewport.ENotAttached
-	}
-
-	vp.canvas.RemoveObserver(vp.id)
-
-	return nil
 }
 
 func (vp *ViewPort) handleUpdate(buff *bits.Matrix) {
@@ -138,19 +169,26 @@ func (vp *ViewPort) handleUpdate(buff *bits.Matrix) {
 	}
 }
 
-func (vp *ViewPort) SetBrightness(bright byte) {
-	vp.updates <- ViewPortUpdate{
-		kind:       ViewPortBrightness,
-		brightness: bright,
+func (vp *ViewPort) Attach(canvas *display.Canvas, row, col int) {
+	vp.attachments <- attachment{
+		canvas: canvas,
+		offset: offset{row, col},
 	}
 }
 
-func (vp *ViewPort) Shift(rowDelta, colDelta int) {
-	vp.updates <- ViewPortUpdate{
-		rowDelta: rowDelta,
-		colDelta: colDelta,
-		kind:     ViewPortShift,
+func (vp *ViewPort) Detach() {
+	vp.attachments <- attachment{canvas: nil}
+}
+
+func (vp *ViewPort) SetBrightness(bright byte) {
+	if bright > 15 {
+		bright = 15
 	}
+	vp.brightness <- bright
+}
+
+func (vp *ViewPort) Locate(row, col int) {
+	vp.offsets <- offset{row, col}
 }
 
 func (vp *ViewPort) Offset() (row, col int) {
