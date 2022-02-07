@@ -38,7 +38,7 @@ type ViewPort struct {
 	chainLength             int
 	offsets                 chan offset
 	brightness              chan byte
-	canvasUpdates           chan display.CanvasUpdate
+	canvasUpdates           chan *bits.Matrix
 	attachments             chan attachment
 }
 
@@ -66,7 +66,7 @@ func newViewPort(bus Bus, chainLength int, blockOrientation, chainOrientation in
 		width:         width,
 		offsets:       make(chan offset),
 		brightness:    make(chan byte, 20),
-		canvasUpdates: make(chan display.CanvasUpdate, 20),
+		canvasUpdates: make(chan *bits.Matrix, 20),
 		attachments:   make(chan attachment, 20),
 	}
 
@@ -99,7 +99,7 @@ func (vp *ViewPort) run() {
 
 		select {
 		case c := <-vp.canvasUpdates:
-			vp.handleUpdate(c.Buff)
+			vp.handleUpdate(c)
 		case b := <-vp.brightness:
 			vp.broadcast(IntensityRegister, b)
 		case o := <-vp.offsets:
@@ -120,10 +120,11 @@ func (vp *ViewPort) run() {
 				vp.canvas = nil
 			}
 			if a.canvas != nil {
+				var b *bits.Matrix
 				vp.canvas = a.canvas
-				vp.id = a.canvas.AddObserver(vp.canvasUpdates)
+				vp.id, b = a.canvas.AddObserver(vp.canvasUpdates)
 				vp.setOffset(a.offset)
-				vp.handleUpdate(vp.canvas.Matrix().Clone())
+				vp.handleUpdate(b)
 			}
 		}
 	}
