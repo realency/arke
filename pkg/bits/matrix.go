@@ -53,7 +53,7 @@ func (m *Matrix) Set(row, col int, value bool) {
 
 // Clear resets all the bits in the matrix back to zero.
 func (m *Matrix) Clear() {
-	m.bits = make([]uint32, m.intsPerRow*m.height)
+	m.bits = make([]uint32, (m.intsPerRow*m.height)+1)
 }
 
 // Clone creates an exact copy of the Matrix in its current state.
