@@ -29,3 +29,9 @@ func (m *Matrix) Xor(other *Matrix) {
 		m.bits[i] = v ^ other.bits[i]
 	}
 }
+
+func (m *Matrix) Not() {
+	for i, v := range m.bits {
+		m.bits[i] = v ^ 0xFFFFFFFF
+	}
+}
