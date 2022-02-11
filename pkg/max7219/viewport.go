@@ -158,14 +158,21 @@ func (vp *ViewPort) broadcast(reg Register, data byte) {
 func (vp *ViewPort) handleUpdate(buff *bits.Matrix) {
 	for i := 0; i < vp.height; i++ {
 		reg := DigitRegister(7 - i)
-		r := buff.Reader(vp.row+i, vp.col+vp.width-1, bits.Left, 8*vp.chainLength)
+
+		c := bits.NewCursor(buff, vp.row+i, vp.col+vp.width)
 		for j := 0; j < vp.chainLength; j++ {
-			data, e := r.ReadByte()
-			if e != nil {
-				panic(e)
-			}
+			data, _ := c.ReadLeftByte()
 			vp.bus.Add(reg, data)
 		}
+
+		/*		r := buff.Reader(vp.row+i, vp.col+vp.width-1, bits.Left, 8*vp.chainLength)
+				for j := 0; j < vp.chainLength; j++ {
+					data, e := r.ReadByte()
+					if e != nil {
+						panic(e)
+					}
+					vp.bus.Add(reg, data)
+				}  */
 		vp.bus.Send()
 	}
 }
