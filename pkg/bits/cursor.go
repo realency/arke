@@ -37,7 +37,7 @@ func (c *Cursor) ReadLeft() (bit, ok bool) {
 		c.current = c.matrix.bits[c.index]
 		c.mask = 0x00000001
 	}
-	return c.current&c.mask != 0x00000000, true
+	return c.current&c.mask != 0, true
 }
 
 func (c *Cursor) ReadRight() (bit, ok bool) {
@@ -84,14 +84,16 @@ func (c *Cursor) ReadDown() (bit, ok bool) {
 func (c *Cursor) ReadLeftByte() (b byte, bits int) {
 	bits = 0
 	b = 0x00
-	bit, ok := c.ReadLeft()
-	for ok && bits < 8 {
+	for bits < 8 {
+		bit, ok := c.ReadLeft()
+		if !ok {
+			break
+		}
 		b <<= 1
 		if bit {
 			b |= 0x01
 		}
 		bits++
-		bit, ok = c.ReadLeft()
 	}
 	return
 }
@@ -99,14 +101,16 @@ func (c *Cursor) ReadLeftByte() (b byte, bits int) {
 func (c *Cursor) ReadRightByte() (b byte, bits int) {
 	bits = 0
 	b = 0x00
-	bit, ok := c.ReadRight()
-	for ok && bits < 8 {
+	for bits < 8 {
+		bit, ok := c.ReadRight()
+		if !ok {
+			break
+		}
 		b <<= 1
 		if bit {
 			b |= 0x01
 		}
 		bits++
-		bit, ok = c.ReadRight()
 	}
 	return
 }
@@ -114,14 +118,16 @@ func (c *Cursor) ReadRightByte() (b byte, bits int) {
 func (c *Cursor) ReadUpByte() (b byte, bits int) {
 	bits = 0
 	b = 0x00
-	bit, ok := c.ReadUp()
-	for ok && bits < 8 {
+	for bits < 8 {
+		bit, ok := c.ReadUp()
+		if !ok {
+			break
+		}
 		b <<= 1
 		if bit {
 			b |= 0x01
 		}
 		bits++
-		bit, ok = c.ReadUp()
 	}
 	return
 }
@@ -129,14 +135,16 @@ func (c *Cursor) ReadUpByte() (b byte, bits int) {
 func (c *Cursor) ReadDownByte() (b byte, bits int) {
 	bits = 0
 	b = 0x00
-	bit, ok := c.ReadDown()
-	for ok && bits < 8 {
+	for bits < 8 {
+		bit, ok := c.ReadDown()
+		if !ok {
+			break
+		}
 		b <<= 1
 		if bit {
 			b |= 0x01
 		}
 		bits++
-		bit, ok = c.ReadDown()
 	}
 	return
 }
