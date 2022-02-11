@@ -19,7 +19,7 @@ type Matrix struct {
 func NewMatrix(height, width int) *Matrix {
 	var rowLen int = ((width - 1) / 32) + 1
 	return &Matrix{
-		bits:       make([]uint32, rowLen*height),
+		bits:       make([]uint32, (rowLen*height)+1),
 		height:     height,
 		width:      width,
 		intsPerRow: rowLen,
