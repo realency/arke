@@ -15,8 +15,19 @@ type Matrix struct {
 	intsPerRow    int // Number of elements of the bits slice per row of the matrix, calculated when the Matrix is initialised and stored for reuse
 }
 
-// NewMatrix creates a new Matrix with a give size
+// ZeroMatrix is zero-sized matrix
+var ZeroMatrix *Matrix = &Matrix{}
+
+// NewMatrix creates a new Matrix with a given size
 func NewMatrix(height, width int) *Matrix {
+	if height < 0 || width < 0 {
+		panic("Arg out of bounds")
+	}
+
+	if height == 0 || width == 0 {
+		return ZeroMatrix
+	}
+
 	var rowLen int = ((width - 1) / 32) + 1
 	return &Matrix{
 		bits:       make([]uint32, (rowLen*height)+1),
@@ -73,9 +84,9 @@ func (m *Matrix) Clone() *Matrix {
 //
 // Copies from source matrix, at origin (sourceRow, sourceCol) to the dest matrix ar (destRow, destCol).
 // Copy will panic if either the source origin or the destination origin are out of bounds.
-// Copies a rectangle up to the size given by height and width.  If the maximum-sized rectange exceeds
+// Copies a rectangle up to the size given by height and width.  If the maximum-sized rectangle exceeds
 // the bonds of either the source or destination matrix, it is trimmed.
-// Returns the actual height and width of the rectange copied as a result.
+// Returns the actual height and width of the rectangle copied as a result.
 //
 // Copying is a read-only operation with respect to the source matrix, with the usual implications for
 // concurrency.
