@@ -7,13 +7,12 @@ import (
 )
 
 func TestNewMatrixCreatesMatrixWithExpectedDimensions(t *testing.T) {
-
 	sizes := []struct {
 		height, width int
 	}{
 		{2, 2},
 		{2, 10},
-		{1000000, 1000000},
+		{30000, 30000},
 		{1000000, 2},
 		{2, 1000000},
 	}
