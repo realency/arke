@@ -1,5 +1,7 @@
 package display
 
+import "io"
+
 type canvasWriter struct {
 	canvas *Canvas
 	font   Font
@@ -7,7 +9,9 @@ type canvasWriter struct {
 	col    int
 }
 
-func NewWriter(canvas *Canvas, font Font, row, col int) *canvasWriter {
+// NewWriter returns a new io.Writer for writing text to a Canvas.
+// The writer writes unicode text in a left-to-right direction to the Canvas from the given location using a given font.
+func NewWriter(canvas *Canvas, font Font, row, col int) io.Writer {
 	return &canvasWriter{
 		canvas: canvas,
 		font:   font,

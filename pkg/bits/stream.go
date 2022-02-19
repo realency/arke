@@ -55,11 +55,10 @@ func (r *stream) read(dest *uint32, count int) int {
 		r.available -= 32
 		return 32
 	default:
+		*dest = r.buff[r.index] << r.offset
+		r.seek(count)
+		return count
 	}
-
-	*dest = r.buff[r.index] << r.offset
-	r.seek(count)
-	return count
 }
 
 func (r *stream) write(source uint32, count int) int {
@@ -74,16 +73,15 @@ func (r *stream) write(source uint32, count int) int {
 		r.index++
 		return 32
 	default:
+		var mask uint32 = (0xFFFFFFFF << (32 - count)) >> r.offset
+		source = (source >> r.offset) & mask
+		mask ^= 0xFFFFFFFF
+		mask &= r.buff[r.index]
+		r.buff[r.index] = mask | source
+
+		r.seek(count)
+		return count
 	}
-
-	var mask uint32 = (0xFFFFFFFF << (32 - count)) >> r.offset
-	source = (source >> r.offset) & mask
-	mask ^= 0xFFFFFFFF
-	mask &= r.buff[r.index]
-	r.buff[r.index] = mask | source
-
-	r.seek(count)
-	return count
 }
 
 func streamCopy(source, dest *stream) int {
