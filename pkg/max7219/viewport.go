@@ -7,18 +7,34 @@ import (
 	"github.com/realency/arke/pkg/display"
 )
 
+// Constant values indication the orientation of a single 8x8 block of an LED matrix
 const (
-	DigitZeroAtTop    int = 0 // Digits are indexed from top to bottom, and the least significant bit in a digit register controls an LED at the right
-	DigitZeroAtRight  int = 1 // Digits are indexed from right to left, and the least significant bit in a digit register controls an LED at the bottom
-	DigitZeroAtBottom int = 2 // Digits are indexed from bottom to top, and the least significant bit in a digit register controls an LED at the left
-	DigitZeroAtLeft   int = 3 // Digits are indexed from left to right, and the least significant bit in a digit register controls an LED at the top
+	// Digits are indexed from top to bottom, and the least significant bit in a digit register controls an LED at the right
+	DigitZeroAtTop int = 0
+
+	// Digits are indexed from right to left, and the least significant bit in a digit register controls an LED at the bottom
+	DigitZeroAtRight int = 1
+
+	// Digits are indexed from bottom to top, and the least significant bit in a digit register controls an LED at the left
+	DigitZeroAtBottom int = 2
+
+	// Digits are indexed from left to right, and the least significant bit in a digit register controls an LED at the top
+	DigitZeroAtLeft int = 3
 )
 
+// Constant values indicating the orientation of a chain of 8x8 blocks of an LED matrix
 const (
-	BlockZeroAtTop    int = 0 // In a chain of chips, the block controlled by the first address-byte pair sent in a packet is at the top
-	BlockZeroAtRight  int = 1 // In a chain of chips, the block controlled by the first address-byte pair sent in a packet is at the right
-	BlockZeroAtBottom int = 2 // In a chain of chips, the block controlled by the first address-byte pair sent in a packet is at the bottom
-	BlockZeroAtLeft   int = 3 // In a chain of chips, the block controlled by the first address-byte pair sent in a packet is at the left
+	// In a chain of chips, the block controlled by the first address-byte pair sent in a packet is at the top
+	BlockZeroAtTop int = 0
+
+	// In a chain of chips, the block controlled by the first address-byte pair sent in a packet is at the right
+	BlockZeroAtRight int = 1
+
+	// In a chain of chips, the block controlled by the first address-byte pair sent in a packet is at the bottom
+	BlockZeroAtBottom int = 2
+
+	// In a chain of chips, the block controlled by the first address-byte pair sent in a packet is at the left
+	BlockZeroAtLeft int = 3
 )
 
 type offset struct {
@@ -30,6 +46,9 @@ type attachment struct {
 	canvas *display.Canvas
 }
 
+// ViewPort provides an implementation of interface viewport.ViewPort specific to the Max7219 chip.
+//
+// Attaching a ViewPort to a canvas drives a Max7219-based dot matrix display from the canvas.
 type ViewPort struct {
 	canvas                  *display.Canvas
 	id                      uint64
@@ -168,6 +187,7 @@ func (vp *ViewPort) handleUpdate(buff *bits.Matrix) {
 	}
 }
 
+// Attach attaches the ViewPort to a canvas at a specific location, so that changes in region framed by the canvas are reflected in the display.
 func (vp *ViewPort) Attach(canvas *display.Canvas, row, col int) {
 	vp.attachments <- attachment{
 		canvas: canvas,
@@ -175,10 +195,12 @@ func (vp *ViewPort) Attach(canvas *display.Canvas, row, col int) {
 	}
 }
 
+// Detach detaches the ViewPort from the canvas it is currently attached to.
 func (vp *ViewPort) Detach() {
 	vp.attachments <- attachment{canvas: nil}
 }
 
+// SetBrightness sets the brightness of the display in the range from 0 to 15
 func (vp *ViewPort) SetBrightness(bright byte) {
 	if bright > 15 {
 		bright = 15
@@ -186,14 +208,22 @@ func (vp *ViewPort) SetBrightness(bright byte) {
 	vp.brightness <- bright
 }
 
+// Locate repositions the ViewPort at a new position on the underlying canvas.
 func (vp *ViewPort) Locate(row, col int) {
 	vp.offsets <- offset{row, col}
 }
 
+// Offset returns the current location of the ViewPort - its offset into the canvas.
 func (vp *ViewPort) Offset() (row, col int) {
 	return vp.row, vp.col
 }
 
+// Size returns the size of the ViewPort in pixels.
 func (vp *ViewPort) Size() (height, width int) {
 	return vp.height, vp.width
+}
+
+// Canvas returns the attached canvas, or nil if the ViewPort is not attached to any canvas.
+func (vp *ViewPort) Canvas() *display.Canvas {
+	return vp.canvas
 }

@@ -1,9 +1,9 @@
 package max7219
 
-// Register represents the address of one of the registers of the MAX7219 chip
+// Register represents the address of one of the registers of the MAX7219 chip.
 type Register byte
 
-// Constant definitions of the register addresses
+// Constant definitions of the register addresses.
 const (
 	NoOpRegister        Register = 0x00
 	Digit0Register      Register = 0x01
@@ -21,12 +21,13 @@ const (
 	DisplayTestRegister Register = 0x0F
 )
 
-// Constant definitions for decode mode values
+// Constant definitions for decode mode values.
 const (
 	DecodeNone byte = 0x00
 	DecodeAll  byte = 0xFF
 )
 
+// Constant definitions for BCD Code B character codes, used when Decode mode is on.
 const (
 	Char0     byte = 0x00
 	Char1     byte = 0x01
@@ -46,16 +47,23 @@ const (
 	CharBlank byte = 0x0F
 )
 
+// Constant definitions for Shutdown mode data values.
 const (
 	Shutdown   byte = 0x00
 	NoShutdown byte = 0x01
 )
 
+// Constant definitions for Display Test mode data values.
 const (
 	DisplayTest   byte = 0x01
 	NoDisplayTest byte = 0x00
 )
 
+// DigitRegister returns the register address for a given digit's index.
+// The digit register controls either a single digit in a 7-segment display,
+// or a line of LEDs in a dot-matrix display.
+//
+// Panics if the argument is out of range.  Acceptable argument values are 0..7, inclusive.
 func DigitRegister(digit int) Register {
 	if digit < 0 || digit > 7 {
 		panic("digit register out of range. The MAX7219 chip has 8 digit registers (in the range 0..7)")
@@ -63,6 +71,9 @@ func DigitRegister(digit int) Register {
 	return Register(digit + 1)
 }
 
+// Intensity returns the data value for the intensity of the display, given a numerical value between 0 and 15, inclusively.
+//
+// Panics if the argument is out of range.
 func Intensity(intensity int) byte {
 	if intensity < 0 || intensity > 15 {
 		panic("Intensity value out of range. Intensity must be in the range 0..15, inclusively")
@@ -71,6 +82,10 @@ func Intensity(intensity int) byte {
 	return byte(intensity)
 }
 
+// ScanLimit sets a limit to the number of digits displayed.
+//
+// Using a limit argument of 0 causes only the first digit (index 0) to be displayed.  Using a limit argument of 1 causes the first and second digits to be displayed. And so forth.
+// All digits will be displayed for an argument of 7.  For a dot-matrix display, digits map to lines in the display, so scan limit affects the number of lines displayed.
 func ScanLimit(limit int) byte {
 	if limit < 0 || limit > 15 {
 		panic("Scan limit must be in the range 0..7, inclusively")
@@ -78,6 +93,9 @@ func ScanLimit(limit int) byte {
 	return byte(limit)
 }
 
+// CodedChar returns the BCD Code B character code for a given rune.
+//
+// For use on a 7-segment display when in Decode mode.
 func CodedChar(from rune, decimalPoint bool) byte {
 	var result byte
 	if decimalPoint {
